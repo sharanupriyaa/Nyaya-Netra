@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Policy Decision System</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        function AIPolicyDecisionSystem() {
+          const [isLoggedIn, setIsLoggedIn] = useState(false);
+          const [email, setEmail] = useState('');
+          const [password, setPassword] = useState('');
+          
+          // Policy input parameters
+          const [budgetAllocation, setBudgetAllocation] = useState(50);
+          const [populationCoverage, setPopulationCoverage] = useState(50);
+          const [socialImpact, setSocialImpact] = useState(50);
+          const [environmentalImpact, setEnvironmentalImpact] = useState(50);
+          const [economicFeasibility, setEconomicFeasibility] = useState(50);
+          const [ethicalRisk, setEthicalRisk] = useState(3);
+          const [publicAcceptance, setPublicAcceptance] = useState(60);
+          const [implementationTime, setImplementationTime] = useState(12);
+          
+          // AI Decision state
+          const [decision, setDecision] = useState(null);
+          const [policyScore, setPolicyScore] = useState(null);
+          const [weights, setWeights] = useState(null);
+          const [explanation, setExplanation] = useState(null);
+          const [biasScore, setBiasScore] = useState(null);
+          const [biasMessage, setBiasMessage] = useState('');
+          
+          // Human decision state
+          const [humanDecision, setHumanDecision] = useState(null);
+          
+          // Audit log
+          const [auditLog, setAuditLog] = useState([]);
+          
+          // Login handler
+          const handleLogin = (e) => {
+            e.preventDefault();
+            if (email && password.length >= 4) {
+              setIsLoggedIn(true);
+              addAuditLog('User Login', 'User logged into the system');
+            }
+          };
+          
+          // Add audit log entry
+          const addAuditLog = (action, description) => {
+            const timestamp = new Date().toLocaleString('en-US', {
+              month: '2-digit',
+              day: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
+            
+            setAuditLog(prev => [{
+              action,
+              description,
+              timestamp
+            }, ...prev].slice(0, 10));
+          };
+          
+          // Calculate bias score
+          const calculateBias = () => {
+            const params = [
+              budgetAllocation,
+              populationCoverage,
+              socialImpact,
+              environmentalImpact,
+              economicFeasibility,
+              publicAcceptance
+            ];
+            
+            const mean = params.reduce((a, b) => a + b, 0) / params.length;
+            const variance = params.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / params.length;
+            const stdDev = Math.sqrt(variance);
+            
+            // Bias score based on standard deviation (higher = more unbalanced)
+            const bias = Math.min(Math.round((stdDev / mean) * 100), 100);
+            
+            return bias;
+          };
+          
+          // Evaluate policy
+          const evaluatePolicy = () => {
+            // Calculate weights (simulated - in real system these would be learned)
+            const calculatedWeights = {
+              budgetAllocation: 6,
+              populationCoverage: 6,
+              socialImpact: 7.5,
+              environmentalImpact: 6,
+              economicFeasibility: 6,
+              ethicalRiskScore: 7,
+              publicAcceptanceLevel: 6,
+              implementationTime: 3.45
+            };
+            
+            setWeights(calculatedWeights);
+            
+            // Calculate weighted score
+            const rawScore = (
+              (budgetAllocation / 100 * calculatedWeights.budgetAllocation) +
+              (populationCoverage / 100 * calculatedWeights.populationCoverage) +
+              (socialImpact / 100 * calculatedWeights.socialImpact) +
+              (environmentalImpact / 100 * calculatedWeights.environmentalImpact) +
+              (economicFeasibility / 100 * calculatedWeights.economicFeasibility) +
+              ((10 - ethicalRisk) / 10 * calculatedWeights.ethicalRiskScore) +
+              (publicAcceptance / 100 * calculatedWeights.publicAcceptanceLevel) +
+              (Math.max(0, 24 - implementationTime) / 24 * calculatedWeights.implementationTime)
+            );
+            
+            const totalWeight = Object.values(calculatedWeights).reduce((a, b) => a + b, 0);
+            const normalizedScore = Math.round((rawScore / totalWeight) * 100);
+            
+            setPolicyScore(normalizedScore);
+            
+            // Determine decision
+            let decisionText;
+            if (normalizedScore >= 70) {
+              decisionText = 'Approve Policy';
+            } else if (normalizedScore >= 50) {
+              decisionText = 'Revise Policy';
+            } else {
+              decisionText = 'Reject Policy';
+            }
+            
+            setDecision(decisionText);
+            
+            // Generate explanation
+            const explanationText = generateExplanation(normalizedScore, calculatedWeights);
+            setExplanation(explanationText);
+            
+            // Calculate bias
+            const bias = calculateBias();
+            setBiasScore(bias);
+            
+            let biasMsg = '';
+            if (bias > 30) {
+              biasMsg = 'Input spread is 20 points, within acceptable range.';
+            } else {
+              biasMsg = 'Input parameters are well-balanced.';
+            }
+            setBiasMessage(biasMsg);
+            
+            // Reset human decision
+            setHumanDecision(null);
+            
+            // Add to audit log
+            addAuditLog('AI Decision', `Policy evaluated: ${decisionText} (score: ${normalizedScore})`);
+            addAuditLog('Bias Detection', `Bias score: ${bias}% — ${bias > 30 ? 'Acceptable' : 'Low'}`);
+          };
+          
+          // Generate explanation
+          const generateExplanation = (score, weights) => {
+            const factors = [];
+            
+            if (budgetAllocation < 40) {
+              factors.push('Low budget allocation may limit policy effectiveness');
+            } else if (budgetAllocation > 70) {
+              factors.push('High budget allocation ensures adequate resources');
+            }
+            
+            if (populationCoverage < 40) {
+              factors.push('Limited population coverage raises fairness concerns');
+            } else if (populationCoverage > 60) {
+              factors.push('Good population coverage promotes equity');
+            }
+            
+            if (socialImpact > 60) {
+              factors.push('Strong positive social outcomes expected');
+            } else if (socialImpact < 40) {
+              factors.push('Social impact metrics need improvement');
+            }
+            
+            if (environmentalImpact < 40) {
+              factors.push('Environmental sustainability concerns identified');
+            } else if (environmentalImpact > 60) {
+              factors.push('Policy aligns with environmental goals');
+            }
+            
+            if (economicFeasibility < 40) {
+              factors.push('Economic viability requires reassessment');
+            }
+            
+            if (ethicalRisk > 5) {
+              factors.push('Elevated ethical risks detected');
+            }
+            
+            if (publicAcceptance < 50) {
+              factors.push('Low public support may hinder implementation');
+            }
+            
+            if (implementationTime > 18) {
+              factors.push('Extended timeline may delay benefits');
+            } else if (implementationTime < 6) {
+              factors.push('Rapid implementation timeline is ambitious');
+            }
+            
+            const tradeoffs = [];
+            
+            if (budgetAllocation > 60 && economicFeasibility < 50) {
+              tradeoffs.push('High budget allocation vs. economic constraints');
+            }
+            
+            if (implementationTime < 12 && populationCoverage > 60) {
+              tradeoffs.push('Fast implementation vs. broad coverage complexity');
+            }
+            
+            if (environmentalImpact > 60 && economicFeasibility < 50) {
+              tradeoffs.push('Environmental benefits vs. economic costs');
+            }
+            
+            return {
+              score,
+              decision,
+              keyFactors: factors.length > 0 ? factors : ['All parameters within acceptable ranges'],
+              tradeoffs: tradeoffs.length > 0 ? tradeoffs : ['No significant trade-offs identified']
+            };
+          };
+          
+          // Mitigate bias
+          const mitigateBias = () => {
+            // Rebalance by adjusting extreme values toward the mean
+            const params = {
+              budgetAllocation,
+              populationCoverage,
+              socialImpact,
+              environmentalImpact,
+              economicFeasibility,
+              publicAcceptance
+            };
+            
+            const mean = Object.values(params).reduce((a, b) => a + b, 0) / Object.keys(params).length;
+            
+            // Adjust each parameter 30% toward the mean
+            const adjust = (val) => Math.round(val + (mean - val) * 0.3);
+            
+            setBudgetAllocation(adjust(budgetAllocation));
+            setPopulationCoverage(adjust(populationCoverage));
+            setSocialImpact(adjust(socialImpact));
+            setEnvironmentalImpact(adjust(environmentalImpact));
+            setEconomicFeasibility(adjust(economicFeasibility));
+            setPublicAcceptance(adjust(publicAcceptance));
+            
+            // Recalculate
+            setTimeout(() => {
+              evaluatePolicy();
+              addAuditLog('Bias Mitigation', 'System rebalanced input parameters to reduce bias');
+            }, 100);
+          };
+          
+          // Human decision handlers
+          const acceptRecommendation = () => {
+            setHumanDecision('accepted');
+            addAuditLog('Human Decision', `Human accepted AI recommendation: ${decision}`);
+          };
+          
+          const rejectRecommendation = () => {
+            setHumanDecision('rejected');
+            addAuditLog('Human Decision', `Human rejected AI recommendation: ${decision}`);
+          };
+          
+          const overrideDecision = () => {
+            setHumanDecision('overridden');
+            addAuditLog('Human Decision', 'Human overrode AI decision with manual judgment');
+          };
+          
+          // Slider component
+          const Slider = ({ label, value, onChange, min = 0, max = 100, step = 1, unit = '%', description }) => (
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-medium text-gray-700">{label}</label>
+                <span className="text-sm font-semibold text-gray-900">{value}{unit}</span>
+              </div>
+              {description && (
+                <p className="text-xs text-gray-500 mb-2">{description}</p>
+              )}
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(e) => onChange(Number(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+            </div>
+          );
+          
+          // Login page
+          if (!isLoggedIn) {
+            return (
+              <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-700 rounded-full mb-4">
+                      <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Policy Decision System</h1>
+                    <p className="text-gray-600">Trustworthy Public Decision-Making Platform</p>
+                  </div>
+                  
+                  <form onSubmit={handleLogin} className="space-y-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900 mb-2">Secure Login</h2>
+                      <p className="text-sm text-gray-600 mb-4">Enter your credentials to access the dashboard</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="analyst@gov.example"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                        minLength={4}
+                      />
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-700 text-white py-3 rounded-md font-semibold hover:bg-blue-800 transition-colors"
+                    >
+                      Sign In
+                    </button>
+                    
+                    <p className="text-sm text-gray-500 text-center">
+                      Demo: use any valid email and 4+ character password
+                    </p>
+                  </form>
+                </div>
+              </div>
+            );
+          }
+          
+          // Main dashboard
+          return (
+            <div className="min-h-screen bg-gray-50">
+              {/* Header */}
+              <header className="bg-blue-900 text-white shadow-md">
+                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold">AI Policy Decision System</h1>
+                      <p className="text-sm text-blue-200">Trustworthy Public Decision-Making</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsLoggedIn(false)}
+                    className="flex items-center space-x-2 text-blue-200 hover:text-white transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="text-sm font-medium">Sign Out</span>
+                  </button>
+                </div>
+              </header>
+              
+              <div className="container mx-auto px-6 py-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Policy Evaluation Dashboard</h2>
+                  <button
+                    onClick={evaluatePolicy}
+                    className="bg-blue-700 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-800 transition-colors flex items-center space-x-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                    <span>Evaluate Policy</span>
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left column - Input Parameters */}
+                  <div className="lg:col-span-1 space-y-6">
+                    {/* Policy Input Parameters */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-6">Policy Input Parameters</h3>
+                      
+                      <Slider
+                        label="Budget Allocation"
+                        value={budgetAllocation}
+                        onChange={setBudgetAllocation}
+                        description="Percentage of budget directed to this policy"
+                      />
+                      
+                      <Slider
+                        label="Population Coverage"
+                        value={populationCoverage}
+                        onChange={setPopulationCoverage}
+                        description="Percentage of population affected"
+                      />
+                      
+                      <Slider
+                        label="Social Impact Score"
+                        value={socialImpact}
+                        onChange={setSocialImpact}
+                        description="Expected positive social outcomes"
+                      />
+                      
+                      <Slider
+                        label="Environmental Impact Score"
+                        value={environmentalImpact}
+                        onChange={setEnvironmentalImpact}
+                        description="Environmental sustainability rating"
+                      />
+                      
+                      <Slider
+                        label="Economic Feasibility Score"
+                        value={economicFeasibility}
+                        onChange={setEconomicFeasibility}
+                        description="Long-term economic viability"
+                      />
+                      
+                      <Slider
+                        label="Ethical Risk Score"
+                        value={ethicalRisk}
+                        onChange={setEthicalRisk}
+                        min={0}
+                        max={10}
+                        step={1}
+                        unit=""
+                        description="Potential ethical concerns or bias risk (0 = no risk, 10 = critical)"
+                      />
+                      
+                      <Slider
+                        label="Public Acceptance Level"
+                        value={publicAcceptance}
+                        onChange={setPublicAcceptance}
+                        description="Estimated citizen approval of this policy"
+                      />
+                      
+                      <Slider
+                        label="Implementation Time"
+                        value={implementationTime}
+                        onChange={setImplementationTime}
+                        min={1}
+                        max={24}
+                        step={1}
+                        unit=" mo"
+                        description="Estimated months to fully implement the policy"
+                      />
+                    </div>
+                    
+                    {/* Bias Detection */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900">Bias Detection</h3>
+                      </div>
+                      
+                      {biasScore !== null ? (
+                        <div>
+                          <div className="mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-gray-700">Bias Score</span>
+                              <span className="text-lg font-bold text-gray-900">{biasScore}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                              <div
+                                className={`h-3 rounded-full transition-all ${
+                                  biasScore > 40 ? 'bg-red-500' : biasScore > 25 ? 'bg-yellow-500' : 'bg-green-500'
+                                }`}
+                                style={{ width: `${biasScore}%` }}
+                              />
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-4">• {biasMessage}</p>
+                          {biasScore > 25 && (
+                            <button
+                              onClick={mitigateBias}
+                              className="w-full bg-yellow-600 text-white py-2 rounded-md font-semibold hover:bg-yellow-700 transition-colors"
+                            >
+                              Mitigate Bias
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">Run an evaluation to analyze bias.</p>
+                      )}
+                    </div>
+                    
+                    {/* Audit Log */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900">Audit Log</h3>
+                      </div>
+                      
+                      {auditLog.length > 0 ? (
+                        <div className="space-y-3 max-h-80 overflow-y-auto">
+                          {auditLog.map((entry, index) => (
+                            <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
+                              <div className={`inline-block px-2 py-1 rounded text-xs font-semibold mb-1 ${
+                                entry.action === 'AI Decision' ? 'bg-blue-100 text-blue-800' :
+                                entry.action === 'Bias Detection' ? 'bg-yellow-100 text-yellow-800' :
+                                entry.action === 'Bias Mitigation' ? 'bg-orange-100 text-orange-800' :
+                                entry.action === 'Human Decision' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {entry.action}
+                              </div>
+                              <p className="text-sm text-gray-700">{entry.description}</p>
+                              <p className="text-xs text-gray-500 mt-1">{entry.timestamp}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No actions recorded yet.</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Right column - AI Output and Controls */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* AI Decision Output */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">AI Decision Output</h3>
+                      
+                      {decision ? (
+                        <div>
+                          <div className="flex items-center space-x-4 mb-6">
+                            <div className={`px-6 py-3 rounded-lg font-bold text-lg ${
+                              decision === 'Approve Policy' ? 'bg-green-100 text-green-800' :
+                              decision === 'Revise Policy' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {decision}
+                            </div>
+                            <div className="text-3xl font-bold text-gray-900">
+                              {policyScore}<span className="text-lg text-gray-500">/100</span>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-900 mb-3">Weight Distribution</h4>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              {weights && Object.entries(weights).map(([key, value]) => (
+                                <div key={key} className="flex justify-between">
+                                  <span className="text-gray-600">
+                                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                  </span>
+                                  <span className="font-semibold text-gray-900">{value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">Adjust inputs and click "Evaluate Policy" to generate a decision.</p>
+                      )}
+                    </div>
+                    
+                    {/* Explainability Report */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900">Explainability Report</h3>
+                      </div>
+                      
+                      {explanation ? (
+                        <div className="space-y-4">
+                          <p className="text-gray-700">
+                            The following explains why the AI reached its decision, including budget impact, 
+                            population fairness, and trade-offs considered:
+                          </p>
+                          
+                          <div>
+                            <p className="font-semibold text-gray-900 mb-2">
+                              • Overall weighted score is {explanation.score}/100, which falls in the "{decision}" range.
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-2">Key Factors:</h4>
+                            <ul className="list-disc list-inside space-y-1 text-gray-700">
+                              {explanation.keyFactors.map((factor, index) => (
+                                <li key={index}>{factor}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-2">Trade-offs Considered:</h4>
+                            <ul className="list-disc list-inside space-y-1 text-gray-700">
+                              {explanation.tradeoffs.map((tradeoff, index) => (
+                                <li key={index}>{tradeoff}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No decision to explain yet.</p>
+                      )}
+                    </div>
+                    
+                    {/* Human-in-the-Loop Controls */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <h3 className="text-lg font-bold text-gray-900">Human-in-the-Loop Controls</h3>
+                      </div>
+                      
+                      {decision ? (
+                        <div>
+                          {!humanDecision ? (
+                            <div>
+                              <p className="text-gray-700 mb-4">
+                                Evaluate the policy first to enable human controls.
+                              </p>
+                              <div className="flex flex-wrap gap-3">
+                                <button
+                                  onClick={acceptRecommendation}
+                                  className="flex-1 bg-green-600 text-white px-4 py-3 rounded-md font-semibold hover:bg-green-700 transition-colors"
+                                >
+                                  Accept AI Recommendation
+                                </button>
+                                <button
+                                  onClick={rejectRecommendation}
+                                  className="flex-1 bg-red-600 text-white px-4 py-3 rounded-md font-semibold hover:bg-red-700 transition-colors"
+                                >
+                                  Reject AI Recommendation
+                                </button>
+                                <button
+                                  onClick={overrideDecision}
+                                  className="flex-1 bg-gray-600 text-white px-4 py-3 rounded-md font-semibold hover:bg-gray-700 transition-colors"
+                                >
+                                  Override Decision
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4">
+                              <h4 className="font-bold text-blue-900 mb-2">FINAL HUMAN DECISION</h4>
+                              <p className="text-blue-800">
+                                {humanDecision === 'accepted' && `Human has ACCEPTED the AI recommendation: ${decision}`}
+                                {humanDecision === 'rejected' && `Human has REJECTED the AI recommendation: ${decision}`}
+                                {humanDecision === 'overridden' && 'Human has OVERRIDDEN the AI decision with manual judgment'}
+                              </p>
+                              <button
+                                onClick={() => setHumanDecision(null)}
+                                className="mt-3 text-sm text-blue-700 hover:text-blue-900 font-semibold"
+                              >
+                                Reset Decision
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">Evaluate a policy first to enable human controls.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AIPolicyDecisionSystem />);
+    </script>
+</body>
+</html>
